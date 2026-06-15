@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPS Test</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131c;
+    --border: #22223a;
+    --accent: #7c5cfc;
+    --accent2: #c45cfc;
+    --hit: #fc5c8a;
+    --text: #e8e8ff;
+    --muted: #6b6b9a;
+    --success: #5cfca0;
+    --warn: #fca85c;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    overflow-x: hidden;
+  }
+
+  .shell {
+    width: 100%;
+    max-width: 540px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+  }
+  .header h1 {
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .header .tagline {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* Duration picker */
+  .duration-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+  .dur-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .dur-btn:hover { border-color: var(--accent); color: var(--text); }
+  .dur-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* Big click zone */
+  .click-zone {
+    position: relative;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    height: 240px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.1s, background 0.1s;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .click-zone.idle {
+    border-style: dashed;
+    border-color: var(--accent);
+  }
+  .click-zone.running {
+    border-color: var(--accent2);
+    cursor: crosshair;
+  }
+  .click-zone.finished {
+    border-color: var(--success);
+    cursor: default;
+  }
+  .click-zone:active:not(.finished) {
+    background: #1a1a2e;
+  }
+
+  .zone-label {
+    font-size: 15px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    text-align: center;
+    line-height: 1.6;
+    pointer-events: none;
+  }
+  .zone-label .big {
+    display: block;
+    font-size: 48px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 900;
+    color: var(--text);
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .zone-label .sub {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+  }
+
+  /* Ripple */
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(124, 92, 252, 0.3);
+    transform: scale(0);
+    animation: ripple-out 0.5s linear forwards;
+    pointer-events: none;
+  }
+  @keyframes ripple-out {
+    to { transform: scale(4); opacity: 0; }
+  }
+
+  /* Stats row */
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 10px;
+    text-align: center;
+  }
+  .stat-val {
+    font-size: 26px;
+    font-weight: 700;
+    font-family: 'Space Mono', monospace;
+    color: var(--text);
+    display: block;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-family: 'Space Mono', monospace;
+  }
+  #cpsVal { color: var(--accent2); }
+  #maxVal { color: var(--warn); }
+
+  /* Progress bar */
+  .progress-wrap {
+    background: var(--border);
+    border-radius: 4px;
+    height: 4px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.1s linear;
+  }
+
+  /* History */
+  .history-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+  .history-list::-webkit-scrollbar { width: 4px; }
+  .history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .hist-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    animation: fade-in 0.3s ease;
+  }
+  .hist-item .rank {
+    color: var(--muted);
+    min-width: 24px;
+  }
+  .hist-item .hist-cps {
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .hist-item .hist-meta {
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .rank-1 .hist-cps { color: #ffd700; }
+  .rank-2 .hist-cps { color: #c0c0c0; }
+  .rank-3 .hist-cps { color: #cd7f32; }
+  .rank-n .hist-cps { color: var(--text); }
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Rating badge on result */
+  .rating {
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    color: var(--success);
+    margin-top: 4px;
+  }
+
+  /* Reset btn */
+  .reset-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: block;
+    margin: 0 auto;
+    transition: all 0.15s;
+    letter-spacing: 0.1em;
+  }
+  .reset-btn:hover { border-color: var(--hit); color: var(--hit); }
+
+  @media (max-width: 400px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+    .stat-card:last-child { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="header">
+    <h1>CPS Test</h1>
+    <div class="tagline">Tıklama hızı ölçer — sürprizsiz, saf sonuç</div>
+  </div>
+
+  <div class="duration-row" id="durRow">
+    <button class="dur-btn active" data-sec="1">1s</button>
+    <button class="dur-btn" data-sec="3">3s</button>
+    <button class="dur-btn" data-sec="5">5s</button>
+    <button class="dur-btn" data-sec="10">10s</button>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+  <div class="click-zone idle" id="clickZone">
+    <div class="zone-label" id="zoneLabel">
+      <span class="big" id="bigNum">Başla</span>
+      <span class="sub" id="subText">buraya tıkla</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <span class="stat-val" id="cpsVal">—</span>
+      <span class="stat-label">CPS</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-val" id="clicksVal">0</span>
+      <span class="stat-label">Tıklama</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-val" id="maxVal">—</span>
+      <span class="stat-label">En İyi</span>
+    </div>
+  </div>
+
+  <div id="historySection" style="display:none">
+    <div class="history-title">Geçmiş sonuçlar</div>
+    <div class="history-list" id="historyList"></div>
+    <br>
+    <button class="reset-btn" id="resetBtn">Geçmişi temizle</button>
+  </div>
+</div>
+
+<script>
+  const zone = document.getElementById('clickZone');
+  const bigNum = document.getElementById('bigNum');
+  const subText = document.getElementById('subText');
+  const cpsVal = document.getElementById('cpsVal');
+  const clicksVal = document.getElementById('clicksVal');
+  const maxVal = document.getElementById('maxVal');
+  const progressBar = document.getElementById('progressBar');
+  const histSection = document.getElementById('historySection');
+  const histList = document.getElementById('historyList');
+  const resetBtn = document.getElementById('resetBtn');
+  const durRow = document.getElementById('durRow');
+
+  let state = 'idle'; // idle | running | finished
+  let clicks = 0;
+  let startTime = null;
+  let duration = 1; // seconds
+  let timer = null;
+  let rafId = null;
+  let history = [];
+  let allTimeBest = null;
+
+  // Duration picker
+  durRow.querySelectorAll('.dur-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (state === 'running') return;
+      durRow.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      duration = parseInt(btn.dataset.sec);
+      if (state === 'finished') resetToIdle();
+    });
+  });
+
+  function resetToIdle() {
+    state = 'idle';
+    clicks = 0;
+    clearTimeout(timer);
+    cancelAnimationFrame(rafId);
+    progressBar.style.width = '0%';
+    zone.className = 'click-zone idle';
+    bigNum.textContent = 'Başla';
+    subText.textContent = 'buraya tıkla';
+    cpsVal.textContent = '—';
+    clicksVal.textContent = '0';
+  }
+
+  function getRating(cps) {
+    if (cps >= 14) return '⚡ Efsane';
+    if (cps >= 10) return '🔥 Çok Hızlı';
+    if (cps >= 7)  return '💪 Hızlı';
+    if (cps >= 5)  return '✅ Ortalama';
+    if (cps >= 3)  return '🐢 Yavaş';
+    return '🥲 Dene yine';
+  }
+
+  function updateTick() {
+    if (state !== 'running') return;
+    const elapsed = (Date.now() - startTime) / 1000;
+    const remaining = duration - elapsed;
+    const progress = Math.min(elapsed / duration, 1);
+    progressBar.style.width = (progress * 100) + '%';
+
+    if (remaining > 0) {
+      const liveCps = elapsed > 0 ? (clicks / elapsed).toFixed(1) : '0.0';
+      bigNum.textContent = remaining.toFixed(1);
+      cpsVal.textContent = liveCps;
+      rafId = requestAnimationFrame(updateTick);
+    }
+  }
+
+  function spawnRipple(e) {
+    const rect = zone.getBoundingClientRect();
+    const x = (e.clientX ?? rect.left + rect.width / 2) - rect.left;
+    const y = (e.clientY ?? rect.top + rect.height / 2) - rect.top;
+    const size = Math.max(rect.width, rect.height) * 0.4;
+    const r = document.createElement('span');
+    r.className = 'ripple';
+    r.style.cssText = `width:${size}px;height:${size}px;left:${x - size/2}px;top:${y - size/2}px`;
+    zone.appendChild(r);
+    r.addEventListener('animationend', () => r.remove());
+  }
+
+  function handleClick(e) {
+    if (state === 'finished') {
+      resetToIdle();
+      return;
+    }
+
+    spawnRipple(e);
+
+    if (state === 'idle') {
+      state = 'running';
+      clicks = 0;
+      startTime = Date.now();
+      zone.className = 'click-zone running';
+      subText.textContent = 'tıklamaya devam et!';
+      timer = setTimeout(finish, duration * 1000);
+      rafId = requestAnimationFrame(updateTick);
+    }
+
+    clicks++;
+    clicksVal.textContent = clicks;
+  }
+
+  function finish() {
+    state = 'finished';
+    cancelAnimationFrame(rafId);
+    progressBar.style.width = '100%';
+    zone.className = 'click-zone finished';
+
+    const cps = (clicks / duration).toFixed(2);
+    const cpsNum = parseFloat(cps);
+    const rating = getRating(cpsNum);
+
+    // Update all-time best
+    if (allTimeBest === null || cpsNum > allTimeBest) allTimeBest = cpsNum;
+    maxVal.textContent = allTimeBest.toFixed(2);
+
+    bigNum.textContent = cps;
+    subText.textContent = `CPS — ${rating}`;
+    cpsVal.textContent = cps;
+
+    // Save to history
+    history.unshift({ cps: cpsNum, clicks, duration, rating, time: new Date() });
+    if (history.length > 20) history.pop();
+    renderHistory();
+
+    subText.innerHTML = `CPS — ${rating}<br><span style="font-size:10px;color:var(--muted)">tekrar için tıkla</span>`;
+  }
+
+  function renderHistory() {
+    if (history.length === 0) { histSection.style.display = 'none'; return; }
+    histSection.style.display = 'block';
+    histList.innerHTML = '';
+    const sorted = [...history].sort((a, b) => b.cps - a.cps);
+    history.forEach((item, idx) => {
+      const rank = sorted.findIndex(s => s === item) + 1;
+      const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-n';
+      const el = document.createElement('div');
+      el.className = `hist-item ${rankClass}`;
+      el.innerHTML = `
+        <span class="rank">#${rank}</span>
+        <span class="hist-cps">${item.cps.toFixed(2)} CPS</span>
+        <span class="hist-meta">${item.clicks} tık / ${item.duration}s</span>
+        <span class="hist-meta">${item.rating}</span>
+      `;
+      histList.appendChild(el);
+    });
+  }
+
+  resetBtn.addEventListener('click', () => {
+    history = [];
+    allTimeBest = null;
+    maxVal.textContent = '—';
+    renderHistory();
+  });
+
+  zone.addEventListener('click', handleClick);
+  zone.addEventListener('touchstart', e => {
+    e.preventDefault();
+    handleClick(e.touches[0]);
+  }, { passive: false });
+</script>
+</body>
+</html>
