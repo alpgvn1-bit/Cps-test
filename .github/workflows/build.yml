@@ -32,3 +32,12 @@ jobs:
           name: CPS-Test-Windows
           path: dist/*.exe
           retention-days: 30
+
+      - name: Release oluştur
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: CPS Test v1.0.0
+          files: dist/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
